@@ -30,6 +30,11 @@
         flex-direction: column;
         gap: 10px;
         margin-bottom: 15px;
+        position: sticky;   /* Mantiene la barra fija */
+        top: 0;             /* Pegada a la parte superior */
+        background-color: white; /* Fondo para que no se vea transparente */
+        z-index: 1000;      /* Siempre encima del contenido */
+        padding: 10px 0;    /* Espaciado para que no quede pegada */
     }
     .search-bar input {
         padding: 10px;
