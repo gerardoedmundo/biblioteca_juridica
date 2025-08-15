@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biblioteca Jurídica para Amigos</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background-color: #f5f5f5;
+    }
+    header {
+        background-color: #2c3e50;
+        color: white;
+        padding: 10px;
+        text-align: center;
+        font-size: 20px;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+    }
+    .container {
+        max-width: 1000px;
+        margin: auto;
+        padding: 15px;
+        background-color: white;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+    .search-bar {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 15px;
+        position: sticky;
+        top: 60px; /* header altura + margen */
+        background-color: white;
+        padding: 10px 0;
+        z-index: 900;
+    }
+    .search-bar input {
+        padding: 10px;
+        border: 1px solid #aaa;
+        border-radius: 5px;
+        font-size: 16px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+        font-size: 14px;
+    }
+    th {
+        background-color: #2980b9;
+        color: white;
+    }
+    tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    .btn {
+        padding: 10px 15px;
+        border: none;
+        border-radius: 5px;
+        font-size: 14px;
+        cursor: pointer;
+        margin: 2px;
+    }
+    .btn-green {
+        background-color: #27ae60;
+        color: white;
+    }
+    .btn-red {
+        background-color: #c0392b;
+        color: white;
+    }
+    .credits {
+        margin-top: 15px;
+        font-size: 12px;
+        color: #555;
+        text-align: center;
+    }
+    .panel {
+        background-color: #f0f4f7;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+        display: none;
+    }
+    input[type="text"], input[type="password"] {
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0;
+        border-radius: 5px;
+        border: 1px solid #aaa;
+    }
+    @media (max-width: 600px) {
+        th, td {
+            font-size: 12px;
+        }
+        header {
+            font-size: 16px;
+        }
+        .btn {
+            font-size: 12px;
+            padding: 8px;
+        }
+    }
+</style>
+</head>
+<body>
+
+<header>Biblioteca Jurídica para Amigos</header>
+
+<div class="container">
+    <div id="login-section">
+        <h2>Ingreso al sistema</h2>
+        <input type="text" id="username" placeholder="Usuario">
+        <input type="password" id="password" placeholder="Contraseña">
+        <button class="btn btn-green" onclick="login()">Ingresar</button>
+    </div>
+
+    <div id="main-section" style="display:none;">
+        <div class="search-bar">
+            <input type="text" id="search" placeholder="Buscar por libro o autor..." onkeyup="filterBooks()">
+            <div id="admin-buttons" style="display:none;">
+                <button class="btn btn-green" onclick="togglePanel('addBookPanel')">Agregar Libro</button>
+                <button class="btn btn-green" onclick="togglePanel('manageUsersPanel')">Administrar Usuarios</button>
+            </div>
+            <button class="btn btn-red" onclick="logout()">Cerrar Sesión</button>
+        </div>
+
+        <!-- Paneles Admin -->
+        <div id="addBookPanel" class="panel">
+            <h3>Agregar Libro</h3>
+            <input type="text" id="newBookTitle" placeholder="Título del libro">
+            <input type="text" id="newBookAuthor" placeholder="Autor">
+            <input type="text" id="newBookLink" placeholder="Link de Google Drive">
+            <button class="btn btn-green" onclick="addBook()">Guardar Libro</button>
+        </div>
+
+        <div id="manageUsersPanel" class="panel">
+            <h3>Administrar Usuarios</h3>
+            <input type="text" id="newUser" placeholder="Nombre de usuario">
+            <input type="password" id="newUserPass" placeholder="Contraseña">
+            <label><input type="checkbox" id="newUserAdmin"> Admin</label>
+            <button class="btn btn-green" onclick="addUser()">Agregar Usuario</button>
+            <div id="userList"></div>
+        </div>
+
+        <table id="books-table">
+            <thead>
+                <tr>
+                    <th>Libro</th>
+                    <th>Autor</th>
+                    <th>Enlace</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <div class="credits">
+            <p><strong>Fundadores:</strong> Lic. Miguel Ángel Sánchez Terrón y Lic. Gerardo Edmundo Calzada Manjarrez</p>
+            <p><strong>Colaboradora:</strong> Srita. Alondra Inés Ocaña Jiménez</p>
+            <p>Diseño web: Jerry</p>
+            <p id="last-update">Última actualización: Cargando...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const adminUser = { user: "admin", pass: "1234" };
+    let booksData = [];
+    let users = [{user:"admin",pass:"1234",admin:true}];
+
+    function login() {
+        let user = document.getElementById("username").value.trim();
+        let pass = document.getElementById("password").value.trim();
+
+        let currentUser = users.find(u => u.user === user && u.pass === pass);
+        if(!currentUser){
+            alert("Usuario o contraseña incorrectos");
+            return;
+        }
+
+        if(currentUser.admin){
+            document.getElementById("admin-buttons").style.display = "block";
+        }
+
+        document.getElementById("login-section").style.display = "none";
+        document.getElementById("main-section").style.display = "block";
+        loadBooks();
+        displayUsers();
+    }
+
+    function logout() {
+        document.getElementById("main-section").style.display = "none";
+        document.getElementById("login-section").style.display = "block";
+        document.getElementById("username").value = "";
+        document.getElementById("password").value = "";
+    }
+
+    function loadBooks() {
+        const url = "https://docs.google.com/spreadsheets/d/1GoqoMekRvl3WB07wt4jPbPjuPIQ61EA0Ao_pIGlbDn0/gviz/tq?tqx=out:json&sheet=libros";
+        fetch(url)
+            .then(res => res.text())
+            .then(data => {
+                let json = JSON.parse(data.substr(47).slice(0, -2));
+                booksData = json.table.rows.map(r => ({
+                    libro: r.c[0] ? r.c[0].v : "",
+                    autor: r.c[1] ? r.c[1].v : "",
+                    link: r.c[2] ? r.c[2].v : ""
+                }));
+                displayBooks(booksData);
+                document.getElementById("last-update").innerText = "Última actualización: " + new Date().toLocaleString();
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error al cargar datos");
+            });
+    }
+
+    function displayBooks(data) {
+        const tbody = document.querySelector("#books-table tbody");
+        tbody.innerHTML = "";
+        data.forEach(book => {
+            let row = `<tr>
+                <td>${book.libro}</td>
+                <td>${book.autor}</td>
+                <td><a href="${book.link}" target="_blank">Ver</a></td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function filterBooks() {
+        let text = document.getElementById("search").value.toLowerCase();
+        let filtered = booksData.filter(book =>
+            book.libro.toLowerCase().includes(text) ||
+            book.autor.toLowerCase().includes(text)
+        );
+        displayBooks(filtered);
+    }
+
+    function togglePanel(panelId){
+        const panels = ['addBookPanel','manageUsersPanel'];
+        panels.forEach(p => {
+            document.getElementById(p).style.display = (p === panelId && document.getElementById(p).style.display === 'none') ? 'block' : 'none';
+        });
+    }
+
+    function addBook(){
+        const title = document.getElementById("newBookTitle").value.trim();
+        const author = document.getElementById("newBookAuthor").value.trim();
+        const link = document.getElementById("newBookLink").value.trim();
+        if(!title || !author || !link){ alert("Completa todos los campos"); return; }
+        booksData.push({libro:title, autor:author, link:link});
+        displayBooks(booksData);
+        document.getElementById("newBookTitle").value="";
+        document.getElementById("newBookAuthor").value="";
+        document.getElementById("newBookLink").value="";
+    }
+
+    function displayUsers(){
+        const list = document.getElementById("userList");
+        list.innerHTML = "";
+        users.forEach(u=>{
+            let li = document.createElement("div");
+            li.innerHTML = `${u.user} ${u.admin?"(Admin)":""} <button class="btn btn-red" onclick="removeUser('${u.user}')">Eliminar</button>`;
+            list.appendChild(li);
+        });
+    }
+
+    function addUser(){
+        const u = document.getElementById("newUser").value.trim();
+        const p = document.getElementById("newUserPass").value.trim();
+        const isAdmin = document.getElementById("newUserAdmin").checked;
+        if(!u || !p){ alert("Completa todos los campos"); return; }
+        if(users.find(x=>x.user===u)){ alert("Usuario ya existe"); return; }
+        users.push({user:u,pass:p,admin:isAdmin});
+        displayUsers();
+        document.getElementById("newUser").value="";
+        document.getElementById("newUserPass").value="";
+        document.getElementById("newUserAdmin").checked=false;
+    }
+
+    function removeUser(username){
+        if(username === 'admin'){ alert("No puedes eliminar el usuario admin"); return; }
+        users = users.filter(u=>u.user!==username);
+        displayUsers();
+    }
+</script>
+
+</body>
+</html>
