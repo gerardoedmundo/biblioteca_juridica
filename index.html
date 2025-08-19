@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Biblioteca Jurídica para Amigos</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 15px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0;
+    }
+    .container {
+      padding: 20px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px;
+    }
+    .hidden {
+      display: none;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      margin-top: 20px;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    .btn-green {
+      background: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn-green:hover {
+      background: #219150;
+    }
+    .search-bar {
+      position: sticky;
+      top: 0;
+      background: #ecf0f1;
+      padding: 10px;
+      border-bottom: 2px solid #ccc;
+      z-index: 10;
+    }
+    footer {
+      margin-top: 20px;
+      background: #ddd;
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Biblioteca Jurídica para Amigos</h1>
+  </header>
+
+  <!-- LOGIN -->
+  <div id="login-section" class="container">
+    <h2>Ingresar</h2>
+    <input type="text" id="username" placeholder="Usuario"><br>
+    <input type="password" id="password" placeholder="Contraseña"><br>
+    <button class="btn-green" onclick="login()">Entrar</button>
+  </div>
+
+  <!-- MAIN SECTION -->
+  <div id="main-section" class="container hidden">
+    <div class="search-bar">
+      <input type="text" id="search" placeholder="Buscar libro..." onkeyup="searchBook()">
+      <button class="btn-green" onclick="logout()">Cerrar Sesión</button>
+    </div>
+
+    <div id="admin-buttons" class="hidden">
+      <h3>Administración</h3>
+      <input type="text" id="newUser" placeholder="Nuevo usuario">
+      <input type="password" id="newPass" placeholder="Contraseña">
+      <button class="btn-green" onclick="addUser()">Agregar Usuario</button>
+      <h3>Usuarios</h3>
+      <table id="usersTable">
+        <thead>
+          <tr><th>Usuario</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <h3>Libros</h3>
+    <table id="booksTable">
+      <thead>
+        <tr>
+          <th>Título</th>
+          <th>Autor</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <footer>
+    <p><b>Fundadores:</b> Lic. Miguel Ángel Sánchez Terrón y Lic. Gerardo Edmundo Calzada Manjarrez</p>
+    <p><b>Colaboradora:</b> Srita. Alondra Inés Ocaña Jiménez</p>
+  </footer>
+
+  <script>
+    const USERS_SHEET_URL = "https://script.google.com/macros/s/AKfycbzY6Ei2WWdl5Dq7UF0c-cwO16b-ElL1-YeS1uBtzI5ZQzyLWufDlH4QUkH08KDwK1mhGg/exec"; 
+    const BOOKS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1GoqoMekRvl3WB07wt4jPbPjuPIQ61EA0Ao_pIGlbDn0/gviz/tq?tqx=out:json&sheet=libros"; 
+
+    let users = [{user: "admin", pass: "1234", admin: true}];
+
+    // 🔄 Cargar usuarios desde Sheets
+    function loadUsersFromSheet() {
+      return fetch(USERS_SHEET_URL)
+        .then(res => res.json())
+        .then(data => {
+          users = [{user: "admin", pass: "1234", admin: true}, ...data];
+          displayUsers();
+        })
+        .catch(err => console.error("Error cargando usuarios:", err));
+    }
+
+    // Mostrar usuarios en tabla
+    function displayUsers() {
+      let tbody = document.querySelector("#usersTable tbody");
+      tbody.innerHTML = "";
+      users.forEach(u => {
+        if (!u.admin) {
+          let row = `<tr><td>${u.user}</td></tr>`;
+          tbody.innerHTML += row;
+        }
+      });
+    }
+
+    // LOGIN con verificación directa en Sheets
+    function login() {
+      let user = document.getElementById("username").value.trim();
+      let pass = document.getElementById("password").value.trim();
+
+      fetch(USERS_SHEET_URL)
+        .then(res => res.json())
+        .then(data => {
+          users = [{user:"admin", pass:"1234", admin:true}, ...data];
+          let currentUser = users.find(u => u.user === user && u.pass === pass);
+          if (!currentUser) {
+            alert("Usuario o contraseña incorrectos");
+            return;
+          }
+
+          if (currentUser.admin) {
+            document.getElementById("admin-buttons").style.display = "block";
+          }
+
+          document.getElementById("login-section").style.display = "none";
+          document.getElementById("main-section").classList.remove("hidden");
+          loadBooks();
+          displayUsers();
+        })
+        .catch(err => {
+          console.error("Error en login:", err);
+          alert("No se pudo verificar usuario en este momento");
+        });
+    }
+
+    // 🔄 Agregar usuario y refrescar lista
+    function addUser() {
+      let newUser = {
+        user: document.getElementById("newUser").value.trim(),
+        pass: document.getElementById("newPass").value.trim()
+      };
+      if (!newUser.user || !newUser.pass) {
+        alert("Complete los datos");
+        return;
+      }
+      fetch(USERS_SHEET_URL, {
+        method: "POST",
+        body: JSON.stringify(newUser)
+      })
+      .then(() => {
+        alert("Usuario agregado correctamente");
+        loadUsersFromSheet(); // 🔄 refresca la lista
+        document.getElementById("newUser").value = "";
+        document.getElementById("newPass").value = "";
+      })
+      .catch(err => console.error("Error guardando usuario:", err));
+    }
+
+    // Cargar libros
+    function loadBooks() {
+      fetch(BOOKS_SHEET_URL)
+        .then(res => res.json())
+        .then(data => {
+          let tbody = document.querySelector("#booksTable tbody");
+          tbody.innerHTML = "";
+          data.forEach(b => {
+            let row = `<tr><td>${b.titulo}</td><td>${b.autor}</td></tr>`;
+            tbody.innerHTML += row;
+          });
+        })
+        .catch(err => console.error("Error cargando libros:", err));
+    }
+
+    // Buscar libros
+    function searchBook() {
+      let filter = document.getElementById("search").value.toLowerCase();
+      let rows = document.querySelectorAll("#booksTable tbody tr");
+      rows.forEach(r => {
+        let text = r.textContent.toLowerCase();
+        r.style.display = text.includes(filter) ? "" : "none";
+      });
+    }
+
+    // Logout
+    function logout() {
+      document.getElementById("main-section").classList.add("hidden");
+      document.getElementById("login-section").style.display = "block";
+      document.getElementById("admin-buttons").style.display = "none";
+    }
+
+    // Inicializar usuarios
+    loadUsersFromSheet();
+  </script>
+</body>
+</html>
