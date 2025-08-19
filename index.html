@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biblioteca Jurídica para Amigos</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f4f4f9;
+    }
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 10px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0;
+    }
+    .container {
+      padding: 15px;
+    }
+    input, button {
+      padding: 8px;
+      margin: 5px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background: #2c3e50;
+      color: white;
+    }
+    .btn {
+      padding: 8px 12px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .btn-green { background: #28a745; color: white; }
+    .btn-blue { background: #007bff; color: white; }
+    .btn-red { background: #dc3545; color: white; }
+    #search-bar {
+      position: sticky;
+      top: 0;
+      background: #f4f4f9;
+      padding: 10px;
+      border-bottom: 2px solid #ccc;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Biblioteca Jurídica para Amigos</h1>
+  </header>
+
+  <div class="container" id="login-section">
+    <h2>Iniciar Sesión</h2>
+    <input type="text" id="username" placeholder="Usuario"><br>
+    <input type="password" id="password" placeholder="Contraseña"><br>
+    <button class="btn btn-blue" onclick="login()">Ingresar</button>
+  </div>
+
+  <div class="container" id="main-section" style="display:none;">
+    <div id="search-bar">
+      <input type="text" id="searchInput" placeholder="Buscar libro..." onkeyup="searchBooks()">
+      <button class="btn btn-red" onclick="logout()">Cerrar Sesión</button>
+    </div>
+
+    <div id="admin-buttons" style="display:none;">
+      <h3>Administración</h3>
+      <button class="btn btn-green" onclick="document.getElementById('addUserForm').style.display='block'">Agregar Usuario</button>
+    </div>
+
+    <div id="addUserForm" style="display:none; margin-top:10px;">
+      <h3>Nuevo Usuario</h3>
+      <input type="text" id="newUsername" placeholder="Usuario"><br>
+      <input type="password" id="newPassword" placeholder="Contraseña"><br>
+      <label><input type="checkbox" id="newIsAdmin"> Administrador</label><br>
+      <button class="btn btn-green" onclick="addUser()">Guardar Usuario</button>
+    </div>
+
+    <h3>Libros</h3>
+    <table id="booksTable">
+      <thead>
+        <tr><th>Título</th><th>Autor</th><th>Año</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <h3>Usuarios</h3>
+    <table id="usersTable">
+      <thead>
+        <tr><th>Usuario</th><th>Admin</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    // URLs de Google Sheets
+    const BOOKS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1GoqoMekRvl3WB07wt4jPbPjuPIQ61EA0Ao_pIGlbDn0/gviz/tq?tqx=out:json&sheet=libros";
+    const USERS_SHEET_URL = "https://script.google.com/macros/s/AKfycbzY6Ei2WWdl5Dq7UF0c-cwO16b-ElL1-YeS1uBtzI5ZQzyLWufDlH4QUkH08KDwK1mhGg/exec";
+
+    let users = [];
+    let books = [];
+
+    // Cargar usuarios desde Google Sheets
+    function loadUsersFromSheet() {
+      return fetch(USERS_SHEET_URL)
+        .then(res => res.json())
+        .then(data => {
+          users = [{ user: "admin", pass: "1234", admin: true }, ...data];
+          displayUsers();
+        })
+        .catch(err => console.error("Error cargando usuarios:", err));
+    }
+
+    // Cargar libros desde Google Sheets
+    function loadBooks() {
+      fetch(BOOKS_SHEET_URL)
+        .then(res => res.json())
+        .then(data => {
+          books = data;
+          displayBooks(books);
+        })
+        .catch(err => console.error("Error cargando libros:", err));
+    }
+
+    // Mostrar libros
+    function displayBooks(data) {
+      const tableBody = document.querySelector("#booksTable tbody");
+      tableBody.innerHTML = "";
+      data.forEach(book => {
+        let row = `<tr><td>${book.titulo}</td><td>${book.autor}</td><td>${book.anio}</td></tr>`;
+        tableBody.innerHTML += row;
+      });
+    }
+
+    // Buscar libros
+    function searchBooks() {
+      let search = document.getElementById("searchInput").value.toLowerCase();
+      let filtered = books.filter(b => b.titulo.toLowerCase().includes(search));
+      displayBooks(filtered);
+    }
+
+    // Mostrar usuarios
+    function displayUsers() {
+      const tableBody = document.querySelector("#usersTable tbody");
+      tableBody.innerHTML = "";
+      users.forEach(u => {
+        tableBody.innerHTML += `<tr><td>${u.user}</td><td>${u.admin ? "Sí" : "No"}</td></tr>`;
+      });
+    }
+
+    // Iniciar sesión (con refresco de usuarios)
+    function login() {
+      let user = document.getElementById("username").value.trim();
+      let pass = document.getElementById("password").value.trim();
+
+      fetch(USERS_SHEET_URL)
+        .then(res => res.json())
+        .then(data => {
+          users = [{ user: "admin", pass: "1234", admin: true }, ...data];
+
+          let currentUser = users.find(u => u.user === user && u.pass === pass);
+          if (!currentUser) {
+            alert("Usuario o contraseña incorrectos");
+            return;
+          }
+
+          if (currentUser.admin) {
+            document.getElementById("admin-buttons").style.display = "block";
+          } else {
+            document.getElementById("admin-buttons").style.display = "none";
+          }
+
+          document.getElementById("login-section").style.display = "none";
+          document.getElementById("main-section").style.display = "block";
+          loadBooks();
+          displayUsers();
+        })
+        .catch(err => {
+          console.error("Error verificando usuario:", err);
+          alert("No se pudo verificar usuario en este momento");
+        });
+    }
+
+    // Agregar usuario
+    function addUser() {
+      let newUser = {
+        user: document.getElementById("newUsername").value.trim(),
+        pass: document.getElementById("newPassword").value.trim(),
+        admin: document.getElementById("newIsAdmin").checked
+      };
+
+      if (!newUser.user || !newUser.pass) {
+        alert("Por favor ingresa usuario y contraseña");
+        return;
+      }
+
+      fetch(USERS_SHEET_URL, {
+        method: "POST",
+        body: JSON.stringify(newUser)
+      })
+      .then(() => {
+        alert("Usuario agregado correctamente");
+        document.getElementById("addUserForm").style.display = "none";
+        loadUsersFromSheet(); // 🔄 refrescar usuarios al guardar
+      })
+      .catch(err => console.error("Error guardando usuario:", err));
+    }
+
+    // Cerrar sesión
+    function logout() {
+      document.getElementById("login-section").style.display = "block";
+      document.getElementById("main-section").style.display = "none";
+    }
+
+    // Inicial
+    loadUsersFromSheet();
+  </script>
+</body>
+</html>
