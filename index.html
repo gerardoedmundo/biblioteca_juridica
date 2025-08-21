@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Biblioteca Jurídica para Amigos</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f9;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 10px;
+      text-align: center;
+    }
+    h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+    #login-section, #main-section {
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, button {
+      padding: 8px;
+      margin: 5px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 8px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background: #2c3e50;
+      color: white;
+    }
+    .btn {
+      background: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #219150;
+    }
+    #search-bar {
+      position: sticky;
+      top: 0;
+      background: #f4f4f9;
+      padding: 10px;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Biblioteca Jurídica para Amigos</h1>
+</header>
+
+<!-- LOGIN -->
+<div id="login-section">
+  <h2>Ingreso al Sistema</h2>
+  <input type="text" id="username" placeholder="Usuario">
+  <input type="password" id="password" placeholder="Contraseña">
+  <button class="btn" onclick="login()">Ingresar</button>
+</div>
+
+<!-- MAIN SECTION -->
+<div id="main-section" style="display:none;">
+  <div id="search-bar">
+    <input type="text" id="search" placeholder="Buscar libro..." onkeyup="searchBooks()">
+    <button class="btn" onclick="logout()">Cerrar sesión</button>
+  </div>
+
+  <h2>Listado de Libros</h2>
+  <table id="books-table">
+    <thead>
+      <tr><th>Título</th><th>Autor</th><th>Año</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Solo admin -->
+  <div id="admin-buttons" style="display:none; margin-top:20px;">
+    <h3>Administración de Usuarios</h3>
+    <input type="text" id="newUser" placeholder="Nuevo usuario">
+    <input type="password" id="newPass" placeholder="Contraseña">
+    <select id="newRole">
+      <option value="false">Usuario</option>
+      <option value="true">Admin</option>
+    </select>
+    <button class="btn" onclick="addUser()">Agregar Usuario</button>
+
+    <h3>Lista de Usuarios</h3>
+    <table id="users-table">
+      <thead>
+        <tr><th>Usuario</th><th>Rol</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  // Usuario admin por defecto
+  let users = [{user:"admin", pass:"1234", admin:true}];
+  let booksData = [];
+  let usersLoaded = false;
+
+  // --- Conexión Google Sheets ---
+  const USERS_SHEET_URL = "https://script.google.com/macros/s/AKfycbzY6Ei2WWdl5Dq7UF0c-cwO16b-ElL1-YeS1uBtzI5ZQzyLWufDlH4QUkH08KDwK1mhGg/exec";
+  const BOOKS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1GoqoMekRvl3WB07wt4jPbPjuPIQ61EA0Ao_pIGlbDn0/gviz/tq?tqx=out:json&sheet=libros";
+
+  // Cargar usuarios desde Google Sheets
+  function loadUsersFromSheet(){
+    fetch(USERS_SHEET_URL)
+    .then(res => res.json())
+    .then(data => {
+      data.forEach(u => {
+        if(!users.find(x => x.user === u.user)) users.push(u);
+      });
+      usersLoaded = true;
+    }).catch(err => console.error("Error cargando usuarios:", err));
+  }
+
+  // Cargar libros desde Google Sheets
+  function loadBooks(){
+    fetch(BOOKS_SHEET_URL)
+    .then(res => res.json())
+    .then(data => {
+      booksData = data;
+      displayBooks(data);
+    }).catch(err => console.error("Error cargando libros:", err));
+  }
+
+  // Mostrar libros en tabla
+  function displayBooks(data){
+    let tbody = document.querySelector("#books-table tbody");
+    tbody.innerHTML = "";
+    data.forEach(b => {
+      let row = `<tr><td>${b.titulo}</td><td>${b.autor}</td><td>${b.anio}</td></tr>`;
+      tbody.innerHTML += row;
+    });
+  }
+
+  // Buscar libros
+  function searchBooks(){
+    let q = document.getElementById("search").value.toLowerCase();
+    let filtered = booksData.filter(b =>
+      b.titulo.toLowerCase().includes(q) ||
+      b.autor.toLowerCase().includes(q) ||
+      b.anio.toLowerCase().includes(q)
+    );
+    displayBooks(filtered);
+  }
+
+  // Mostrar usuarios en tabla
+  function displayUsers(){
+    let tbody = document.querySelector("#users-table tbody");
+    tbody.innerHTML = "";
+    users.forEach(u => {
+      tbody.innerHTML += `<tr><td>${u.user}</td><td>${u.admin ? "Admin" : "Usuario"}</td></tr>`;
+    });
+  }
+
+  // Login
+  function login() {
+    if(!usersLoaded){
+      alert("Espera un momento, cargando usuarios...");
+      return;
+    }
+
+    let user = document.getElementById("username").value.trim();
+    let pass = document.getElementById("password").value.trim();
+
+    let currentUser = users.find(u => u.user === user && u.pass === pass);
+    if(!currentUser){
+      alert("Usuario o contraseña incorrectos");
+      return;
+    }
+
+    if(currentUser.admin) {
+      document.getElementById("admin-buttons").style.display = "block";
+      displayUsers();
+    } else {
+      document.getElementById("admin-buttons").style.display = "none";
+    }
+
+    document.getElementById("login-section").style.display = "none";
+    document.getElementById("main-section").style.display = "block";
+    loadBooks();
+  }
+
+  // Logout
+  function logout(){
+    document.getElementById("main-section").style.display = "none";
+    document.getElementById("login-section").style.display = "block";
+    document.getElementById("username").value = "";
+    document.getElementById("password").value = "";
+  }
+
+  // Agregar usuario
+  function addUser(){
+    let newUser = document.getElementById("newUser").value.trim();
+    let newPass = document.getElementById("newPass").value.trim();
+    let newRole = document.getElementById("newRole").value === "true";
+
+    if(!newUser || !newPass){
+      alert("Faltan datos");
+      return;
+    }
+
+    let userObj = {user:newUser, pass:newPass, admin:newRole};
+
+    fetch(USERS_SHEET_URL, {
+      method:"POST",
+      body: JSON.stringify(userObj)
+    })
+    .then(res => res.text())
+    .then(msg => {
+      alert("Usuario agregado");
+      users.push(userObj);
+      displayUsers();
+    })
+    .catch(err => console.error("Error guardando usuario:", err));
+  }
+
+  // Cargar usuarios apenas abre la página
+  loadUsersFromSheet();
+</script>
+
+</body>
+</html>
