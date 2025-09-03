@@ -130,7 +130,17 @@
       const res = await fetch(url);
       const text = await res.text();
       const lines = text.split(/\r?\n/).filter(l => l.trim());
-      const headers = lines.shift().split(",").map(h => h.trim().toLowerCase());
+      const delimiter = lines[0].includes(";") ? ";" : ",";
+      const headers = lines.shift().split(delimiter).map(h => h.trim().toLowerCase());
+      const rows = lines.map(line => {
+  const cols = line.split(delimiter);
+  return {
+    libro: cols[idxLibro]?.trim() || "",
+    autor: cols[idxAutor]?.trim() || "",
+    link:  cols[idxLink]?.trim()  || ""
+  };
+});
+
       const idxLibro = headers.indexOf("libro");
       const idxAutor = headers.indexOf("autor");
       const idxLink  = headers.indexOf("link");
