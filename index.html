@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Libritos Jurídicos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0b1020; --card:#111833; --muted:#96a0be; --text:#e9ecf5;
+  --accent:#7aa2ff; --accent-2:#b2c8ff; --radius:16px;
+  --shadow:0 10px 25px rgba(0,0,0,.25),0 6px 12px rgba(20,40,120,.25);
+  --ring: rgba(122,162,255,.35);
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text);}
+.container{max-width:1100px;margin:0 auto;padding:28px 16px 60px;}
+h1{text-align:center;margin-bottom:4px;}
+.subtitle{text-align:center;color:var(--muted);margin-bottom:20px;}
+.search-box{display:flex;justify-content:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+.search-box input{padding:12px 20px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background: linear-gradient(180deg,#0f1631,#0c122a);color:var(--text);font-size:16px;outline:none;width:300px;max-width:90%;}
+.search-box input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--ring);}
+.segmented{display:inline-grid;grid-auto-flow:column;gap:6px;background:#0b1230;padding:6px;border-radius:999px;border:1px solid rgba(255,255,255,.08);}
+.segmented button{border:none;background:transparent;color:var(--muted);padding:8px 14px;border-radius:999px;cursor:pointer;font-weight:600;}
+.segmented button[aria-pressed="true"]{background:linear-gradient(180deg,#1b2753,#13204a);color:var(--text);box-shadow:0 1px 0 rgba(255,255,255,.05) inset;}
+.cards{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));}
+.card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);transition:transform .2s,box-shadow .2s;}
+.card:hover{transform:translateY(-4px);box-shadow:0 15px 30px rgba(0,0,0,.3);}
+.card h2{margin:0 0 8px;font-size:18px;}
+.card p{margin:0 0 12px;color:var(--muted);}
+.card a.button{display:inline-block;padding:8px 16px;background:var(--accent);color:#0c1330;border-radius:10px;text-decoration:none;font-weight:600;}
+.card a.button:hover{filter:brightness(1.05);}
+mark{background:rgba(255,238,0,.35);padding:0 2px;border-radius:4px;}
+@media(max-width:600px){.search-box{flex-direction:column;align-items:center;}.card h2{font-size:16px;}}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📚 Libritos Jurídicos</h1>
+<div class="subtitle">Buscador tipo app web conectado a Google Sheets</div>
+<div class="search-box">
+<input type="text" id="search" placeholder="Buscar por libro o autor..."/>
+<div class="segmented" role="tablist" aria-label="Filtro">
+<button data-field="todo" aria-pressed="true">Todo</button>
+<button data-field="libro" aria-pressed="false">Libro</button>
+<button data-field="autor" aria-pressed="false">Autor</button>
+</div>
+</div>
+<div class="cards" id="cards"></div>
+</div>
+
+<script>
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbzTWDDTlU6vEdDWGl-8REGSG-42kbUtx3P4SMOeBLfakbtcbDINWUq7laFAFsWaomr1Dw/exec";
+let allData = [];
+let currentField = "todo";
+
+async function fetchSheet(){
+  const res = await fetch(SHEET_JSON_URL);
+  if(!res.ok) throw new Error("No se pudo obtener datos del Apps Script");
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  return data;
+}
+
+function highlight(text, query){
+  if(!query) return text;
+  const regex = new RegExp(`(${query})`, "gi");
+  return text.replace(regex, "<mark>$1</mark>");
+}
+
+function renderCards(data, query=""){
+  const container = document.getElementById("cards");
+  container.innerHTML = "";
+  data.forEach(row=>{
+    container.innerHTML += `
+      <div class="card">
+        <h2>${highlight(row.libro, query)}</h2>
+        <p>${highlight(row.autor, query)}</p>
+        <a class="button" href="${row.link}" target="_blank">Abrir</a>
+      </div>
+    `;
+  });
+}
+
+function filterData(query){
+  const q = query.trim().toLowerCase();
+  return allData.filter(row=>{
+    const inLibro = row.libro.toLowerCase().includes(q);
+    const inAutor = row.autor.toLowerCase().includes(q);
+    if(currentField==="libro") return inLibro;
+    if(currentField==="autor") return inAutor;
+    return inLibro || inAutor;
+  });
+}
+
+document.getElementById("search").addEventListener("input", e=>{
+  renderCards(filterData(e.target.value), e.target.value);
+});
+
+document.querySelectorAll(".segmented button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".segmented button").forEach(b=>b.setAttribute("aria-pressed","false"));
+    btn.setAttribute("aria-pressed","true");
+    currentField = btn.dataset.field;
+    renderCards(filterData(document.getElementById("search").value), document.getElementById("search").value);
+  });
+});
+
+(async ()=>{
+  try{
+    allData = await fetchSheet();
+    renderCards(allData);
+  }catch(err){
+    console.error(err);
+    alert("No se pudieron cargar los libros: " + err.message);
+  }
+})();
+</script>
+</body>
+</html>
