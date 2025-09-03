@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Libritos Jurídicos</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f7f7f7;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    #search-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    input, select {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      min-width: 200px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background: #2c3e50;
+      color: white;
+    }
+    tr:hover {
+      background: #f1f1f1;
+    }
+    .btn {
+      padding: 6px 12px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 0.3s;
+    }
+    .btn:hover {
+      background: #2980b9;
+    }
+    mark {
+      background: yellow;
+      padding: 0;
+    }
+    @media (max-width: 600px) {
+      table, th, td {
+        font-size: 14px;
+      }
+      input, select {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>📚 Libritos Jurídicos</h1>
+
+  <div id="search-container">
+    <input type="text" id="search" placeholder="Buscar por libro o autor...">
+    <select id="filter">
+      <option value="todo">Todo</option>
+      <option value="libro">Libro</option>
+      <option value="autor">Autor</option>
+    </select>
+  </div>
+
+  <table id="tabla-libros">
+    <thead>
+      <tr>
+        <th>Libro</th>
+        <th>Autor</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const SPREADSHEET_ID = "1GoqoMekRvl3WB07wt4jPbPjuPIQ61EA0Ao_pIGlbDn0"; // 👈 cambia esto
+    const SHEET_NAME = "libros";
+
+    async function fetchSheet(spreadsheetId, sheetName){
+      const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+      const res = await fetch(url);
+      const text = await res.text();
+
+      // Convertimos CSV en filas
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      const headers = lines.shift().split(",").map(h => h.trim().toLowerCase());
+
+      const idxLibro = headers.indexOf("libro");
+      const idxAutor = headers.indexOf("autor");
+      const idxLink  = headers.indexOf("link");
+      if(idxLibro === -1 || idxAutor === -1 || idxLink === -1){
+        throw new Error('Encabezados requeridos no encontrados: "Libro", "Autor", "Link"');
+      }
+
+      const rows = lines.map(line => {
+        const cols = line.split(",");
+        return {
+          libro: cols[idxLibro]?.trim() || "",
+          autor: cols[idxAutor]?.trim() || "",
+          link:  cols[idxLink]?.trim()  || ""
+        };
+      }).filter(x => x.libro || x.autor || x.link);
+
+      return rows;
+    }
+
+    function highlight(text, query){
+      if(!query) return text;
+      const regex = new RegExp(`(${query})`, "gi");
+      return text.replace(regex, "<mark>$1</mark>");
+    }
+
+    function renderTable(data, query="", filter="todo"){
+      const tbody = document.querySelector("#tabla-libros tbody");
+      tbody.innerHTML = "";
+      data.forEach(row => {
+        let libro = row.libro;
+        let autor = row.autor;
+
+        if(query){
+          if(filter==="todo" || filter==="libro"){
+            libro = highlight(libro, query);
+          }
+          if(filter==="todo" || filter==="autor"){
+            autor = highlight(autor, query);
+          }
+        }
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${libro}</td>
+          <td>${autor}</td>
+          <td><a class="btn" href="${row.link}" target="_blank">Abrir</a></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function init(){
+      try {
+        const data = await fetchSheet(SPREADSHEET_ID, SHEET_NAME);
+        renderTable(data);
+
+        const search = document.getElementById("search");
+        const filter = document.getElementById("filter");
+
+        function update(){
+          const q = search.value.trim();
+          const f = filter.value;
+          const filtered = data.filter(row => {
+            if(!q) return true;
+            const qLower = q.toLowerCase();
+            if(f==="todo") return row.libro.toLowerCase().includes(qLower) || row.autor.toLowerCase().includes(qLower);
+            if(f==="libro") return row.libro.toLowerCase().includes(qLower);
+            if(f==="autor") return row.autor.toLowerCase().includes(qLower);
+          });
+          renderTable(filtered, q, f);
+        }
+
+        search.addEventListener("input", update);
+        filter.addEventListener("change", update);
+      } catch(err){
+        alert("Error al cargar la hoja: " + err.message);
+        console.error(err);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
