@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Libritos Jurídicos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0b1020; --card:#111833; --muted:#96a0be; --text:#e9ecf5;
+  --accent:#7aa2ff; --accent-2:#b2c8ff; --radius:16px;
+  --shadow:0 10px 25px rgba(0,0,0,.25),0 6px 12px rgba(20,40,120,.25);
+  --ring: rgba(122,162,255,.35);
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text);}
+.container{max-width:1100px;margin:0 auto;padding:28px 16px 60px;}
+h1{text-align:center;margin-bottom:4px;}
+.subtitle{text-align:center;color:var(--muted);margin-bottom:20px;}
+.search-box{display:flex;justify-content:center;margin-bottom:20px;}
+.search-box input{padding:12px 20px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background: linear-gradient(180deg,#0f1631,#0c122a);color:var(--text);font-size:16px;outline:none;width:300px;max-width:90%;}
+.search-box input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--ring);}
+table {width:100%; border-collapse:collapse; background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;}
+th,td{padding:14px 16px; text-align:left;}
+th{font-size:12px; text-transform:uppercase; color:var(--accent-2); border-bottom:1px solid rgba(255,255,255,.08);}
+tr:hover{background:linear-gradient(180deg, rgba(122,162,255,.06), rgba(122,162,255,.04));}
+a.button{display:inline-block; padding:6px 12px; background:var(--accent); color:#0c1330; border-radius:10px; text-decoration:none; font-weight:600;}
+a.button:hover{filter:brightness(1.05);}
+mark{background:rgba(255,238,0,.35); padding:0 2px; border-radius:4px;}
+@media(max-width:600px){.search-box{flex-direction:column;align-items:center;} th,td{font-size:14px;}}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📚 Libritos Jurídicos</h1>
+<div class="subtitle">Buscador conectado a Google Sheets</div>
+<div class="search-box">
+<input type="text" id="search" placeholder="Buscar por libro o autor..."/>
+</div>
+<table id="results">
+<thead><tr><th>Libro</th><th>Autor</th><th>Acción</th></tr></thead>
+<tbody></tbody>
+</table>
+</div>
+
+<script>
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbzTWDDTlU6vEdDWGl-8REGSG-42kbUtx3P4SMOeBLfakbtcbDINWUq7laFAFsWaomr1Dw/exec";
+let allData = [];
+
+async function fetchSheet(){
+  const res = await fetch(SHEET_JSON_URL);
+  if(!res.ok) throw new Error("No se pudo obtener datos del Apps Script");
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  return data;
+}
+
+function highlight(text, query){
+  if(!query) return text;
+  const regex = new RegExp(`(${query})`, "gi");
+  return text.replace(regex, "<mark>$1</mark>");
+}
+
+function renderTable(data, query=""){
+  const tbody = document.querySelector("#results tbody");
+  tbody.innerHTML = "";
+  data.forEach(row=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${highlight(row.libro, query)}</td>
+      <td>${highlight(row.autor, query)}</td>
+      <td><a class="button" href="${row.link}" target="_blank">Abrir</a></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById("search").addEventListener("input", e=>{
+  const q = e.target.value.trim().toLowerCase();
+  const filtered = allData.filter(r=> r.libro.toLowerCase().includes(q) || r.autor.toLowerCase().includes(q));
+  renderTable(filtered, q);
+});
+
+(async ()=>{
+  try{
+    allData = await fetchSheet();
+    renderTable(allData);
+  }catch(err){
+    console.error(err);
+    alert("No se pudieron cargar los libros: " + err.message);
+  }
+})();
+</script>
+</body>
+</html>
