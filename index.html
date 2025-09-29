@@ -121,9 +121,9 @@ document.getElementById("loginBtn").addEventListener("click", async ()=>{
   try {
     const usuarios = await fetchUsuarios();
     const user = usuarios.find(u =>
-      u.usuario.trim().toLowerCase() === username.toLowerCase() &&
-      u.clave.trim() === password
-    );
+  (u.usuario + "").trim().toLowerCase() === username.toLowerCase() &&
+  (u.clave + "").trim() === password
+);
     if(user){
       currentUser = username;
       document.getElementById("loginModal").style.display="none";
@@ -149,4 +149,5 @@ window.addEventListener("beforeunload", async ()=>{
 </script>
 </body>
 </html>
+
 
