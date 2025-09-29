@@ -1,0 +1,117 @@
+<body>
+<div class="container">
+
+  <!-- LOGIN -->
+  <div id="login-section">
+    <h1>🔐 Iniciar Sesión</h1>
+    <div class="subtitle">Acceso a Libros Jurídicos Maestros</div>
+    <form id="login-form">
+      <input type="text" id="username" placeholder="Usuario" required style="display:block;margin:10px auto;padding:10px;width:250px;">
+      <input type="password" id="password" placeholder="Contraseña" required style="display:block;margin:10px auto;padding:10px;width:250px;">
+      <button type="submit" style="padding:10px 20px;border:none;background:#1e40af;color:#fff;border-radius:8px;font-weight:600;cursor:pointer;">Entrar</button>
+    </form>
+  </div>
+
+  <!-- APP -->
+  <div id="app-section" style="display:none;">
+    <h1>📚 Libros Jurídicos Maestros</h1>
+    <div class="subtitle">Buscador conectado a Google Sheets</div>
+    <div class="search-box">
+      <input type="text" id="search" placeholder="Buscar por libro o autor..."/>
+    </div>
+    <table id="results">
+      <thead><tr><th>Libro</th><th>Autor</th><th>Acción</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div style="text-align:center;margin-top:20px;">
+      <button id="logout" style="padding:8px 16px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;">Cerrar Sesión</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE_URL = "https://script.google.com/macros/s/AKfycbzTWDDTlU6vEdDWGl-8REGSG-42kbUtx3P4SMOeBLfakbtcbDINWUq7laFAFsWaomr1Dw/exec";
+let allData = [];
+
+// --- login ---
+async function fetchSheet(sheetName){
+  const res = await fetch(`${BASE_URL}?sheet=${sheetName}`);
+  if(!res.ok) throw new Error("No se pudo obtener datos");
+  return await res.json();
+}
+
+async function login(username, password){
+  const users = await fetchSheet("usuarios");
+  const found = users.find(u => u.usuario === username && u.clave === password);
+  if(found){
+    localStorage.setItem("loggedInUser", username);
+    return true;
+  }
+  return false;
+}
+
+function logout(){
+  localStorage.removeItem("loggedInUser");
+  document.getElementById("app-section").style.display = "none";
+  document.getElementById("login-section").style.display = "block";
+}
+
+// --- tabla libros ---
+function highlight(text, query){
+  if(!query) return text;
+  const regex = new RegExp(`(${query})`, "gi");
+  return text.replace(regex, "<mark>$1</mark>");
+}
+
+function renderTable(data, query=""){
+  const tbody = document.querySelector("#results tbody");
+  tbody.innerHTML = "";
+  data.forEach(row=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${highlight(row.libro, query)}</td>
+      <td>${highlight(row.autor, query)}</td>
+      <td><a class="button" href="${row.link}" target="_blank">Abrir</a></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function loadBooks(){
+  allData = await fetchSheet("libros");
+  renderTable(allData);
+}
+
+// --- eventos ---
+document.getElementById("login-form").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+  if(await login(username,password)){
+    document.getElementById("login-section").style.display = "none";
+    document.getElementById("app-section").style.display = "block";
+    loadBooks();
+  }else{
+    alert("Usuario o contraseña incorrectos");
+  }
+});
+
+document.getElementById("logout").addEventListener("click", logout);
+
+document.getElementById("search").addEventListener("input", e=>{
+  const q = e.target.value.trim().toLowerCase();
+  const filtered = allData.filter(r=> r.libro.toLowerCase().includes(q) || r.autor.toLowerCase().includes(q));
+  renderTable(filtered, q);
+});
+
+// --- persistencia de sesión ---
+(async ()=>{
+  const user = localStorage.getItem("loggedInUser");
+  if(user){
+    document.getElementById("login-section").style.display = "none";
+    document.getElementById("app-section").style.display = "block";
+    loadBooks();
+  }
+})();
+</script>
+</body>
