@@ -33,7 +33,10 @@ mark{background:rgba(255,238,0,.35); padding:0 2px; border-radius:4px;}
 #loginModal input{width:100%;padding:10px;margin-bottom:12px;border-radius:8px;border:1px solid #ccc;}
 #loginModal button{width:100%;padding:10px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;}
 #loginModal button:hover{filter:brightness(1.05);}
-#loginError{color:red;margin-top:8px;display:none;}
+.user-bar{display:flex; justify-content:flex-end; align-items:center; margin-bottom:16px;}
+.user-bar span{margin-right:12px; font-weight:600; color:#7aa2ff;}
+.user-bar button{padding:6px 12px; border:none; border-radius:8px; background:#7aa2ff; color:#fff; cursor:pointer;}
+.user-bar button:hover{filter:brightness(1.05);}
 @media(max-width:600px){.search-box{flex-direction:column;align-items:center;} th,td{font-size:14px;}}
 </style>
 </head>
@@ -45,20 +48,26 @@ mark{background:rgba(255,238,0,.35); padding:0 2px; border-radius:4px;}
     <input type="text" id="username" placeholder="Usuario" />
     <input type="password" id="password" placeholder="Contraseña" />
     <button id="loginBtn">Entrar</button>
-    <div id="loginError"></div>
+    <div id="loginError" style="color:red;margin-top:8px;display:none;"></div>
   </div>
 </div>
 
 <div class="container" style="display:none;" id="mainApp">
-<h1>📚 Libros Jurídicos Maestros</h1>
-<div class="subtitle">Buscador conectado a Google Sheets</div>
-<div class="search-box">
-<input type="text" id="search" placeholder="Buscar por libro o autor..."/>
-</div>
-<table id="results">
-<thead><tr><th>Libro</th><th>Autor</th><th>Acción</th></tr></thead>
-<tbody></tbody>
-</table>
+  <h1>📚 Libros Jurídicos Maestros</h1>
+  <div class="subtitle">Buscador conectado a Google Sheets</div>
+
+  <div class="user-bar">
+    <span id="currentUser"></span>
+    <button id="logoutBtn">Cerrar sesión</button>
+  </div>
+
+  <div class="search-box">
+    <input type="text" id="search" placeholder="Buscar por libro o autor..."/>
+  </div>
+  <table id="results">
+    <thead><tr><th>Libro</th><th>Autor</th><th>Acción</th></tr></thead>
+    <tbody></tbody>
+  </table>
 </div>
 
 <script>
@@ -68,21 +77,27 @@ let currentUser = "";
 
 // Traer usuarios
 async function fetchUsuarios() {
-  const res = await fetch(`${SHEET_JSON_URL}?action=usuarios`);
+  const res = await fetch(SHEET_JSON_URL+"?action=usuarios");
   if(!res.ok) throw new Error("No se pudieron obtener los usuarios");
-  return await res.json();
+  const data = await res.json();
+  return data.map(u=>({usuario: u.usuario, clave: u.clave+"", ultimoLogin: u.ultimoLogin, ultimoLogout: u.ultimoLogout}));
 }
 
 // Traer libros
 async function fetchLibros() {
-  const res = await fetch(`${SHEET_JSON_URL}?action=libros`);
+  const res = await fetch(SHEET_JSON_URL+"?action=libros");
   if(!res.ok) throw new Error("No se pudieron obtener los libros");
   return await res.json();
 }
 
 // Registrar login/logout
-async function logUser(usuario, tipo){
-  await fetch(`${SHEET_JSON_URL}?action=log&usuario=${encodeURIComponent(usuario)}&tipo=${tipo}`);
+async function logUser(usuario,tipo){
+  await fetch(`${SHEET_JSON_URL}?action=log&usuario=${usuario}&tipo=${tipo}`);
+}
+
+// Mostrar usuario
+function showUser(username){
+  document.getElementById("currentUser").textContent = `Conectado como: ${username}`;
 }
 
 // Highlight
@@ -114,21 +129,23 @@ document.getElementById("search").addEventListener("input", e=>{
   renderTable(filtered,q);
 });
 
-// Manejo del login
+// Login manual
 document.getElementById("loginBtn").addEventListener("click", async ()=>{
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value.trim();
   try {
     const usuarios = await fetchUsuarios();
-    const user = usuarios.find(u =>
-  (u.usuario + "").trim().toLowerCase() === username.toLowerCase() &&
-  (u.clave + "").trim() === password
-);
+    const user = usuarios.find(u=>u.usuario===username && u.clave===password);
     if(user){
       currentUser = username;
+      localStorage.setItem("libritosUser", username);
+
       document.getElementById("loginModal").style.display="none";
       document.getElementById("mainApp").style.display="block";
+
+      showUser(username);
       await logUser(username,"login");
+
       allData = await fetchLibros();
       renderTable(allData);
     } else {
@@ -137,17 +154,48 @@ document.getElementById("loginBtn").addEventListener("click", async ()=>{
       errDiv.textContent="Usuario o contraseña incorrectos";
     }
   } catch(err){
-    console.error(err);
-    alert("Error al obtener usuarios: " + err.message);
+    alert("Error al obtener usuarios: "+err.message);
   }
 });
 
-// Logout automático al cerrar o recargar
+// Login automático desde localStorage
+window.addEventListener("load", async ()=>{
+  const savedUser = localStorage.getItem("libritosUser");
+  if(savedUser){
+    try{
+      const usuarios = await fetchUsuarios();
+      const user = usuarios.find(u => u.usuario === savedUser);
+      if(user){
+        currentUser = savedUser;
+        document.getElementById("loginModal").style.display="none";
+        document.getElementById("mainApp").style.display="block";
+
+        showUser(savedUser);
+        await logUser(savedUser,"login");
+
+        allData = await fetchLibros();
+        renderTable(allData);
+      }
+    }catch(err){
+      console.error(err);
+    }
+  }
+});
+
+// Logout manual
+document.getElementById("logoutBtn").addEventListener("click", async ()=>{
+  if(currentUser){
+    await logUser(currentUser,"logout");
+    currentUser = "";
+    localStorage.removeItem("libritosUser");
+    document.getElementById("mainApp").style.display="none";
+    document.getElementById("loginModal").style.display="flex";
+    document.getElementById("username").value = "";
+    document.getElementById("password").value = "";
+  }
+});
+
+// Logout al cerrar o recargar
 window.addEventListener("beforeunload", async ()=>{
   if(currentUser) await logUser(currentUser,"logout");
 });
-</script>
-</body>
-</html>
-
-
