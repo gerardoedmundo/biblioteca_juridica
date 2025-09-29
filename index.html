@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Libros Jurídicos Maestros</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --card:#111833; --muted:#7aa2ff; --text:#ffffff;
+  --accent:#7aa2ff; --accent-2:#b2c8ff; --radius:16px;
+  --shadow:0 10px 25px rgba(0,0,0,.25);
+  --ring: rgba(122,162,255,.35);
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;font-family:Inter,Arial,sans-serif;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  color: var(--text);
+}
+.container{max-width:1100px;margin:0 auto;padding:28px 16px 60px;}
+h1{text-align:center;margin-bottom:4px;}
+.subtitle{text-align:center;color:var(--muted);margin-bottom:20px;}
+
+/* Header con logout */
+.header {
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:20px;
+}
+#logoutBtn {
+  background:linear-gradient(90deg,#ff7b7b,#ff4c4c);
+  border:none;padding:8px 16px;border-radius:8px;
+  color:#fff;font-weight:600;cursor:pointer;transition:all .2s;
+}
+#logoutBtn:hover{filter:brightness(1.1);}
+
+/* Buscador */
+.search-box{display:flex;justify-content:center;margin-bottom:20px;}
+.search-box input{
+  padding:12px 20px;border-radius:999px;border:1px solid rgba(0,0,0,.12);
+  background:#fefefe;color:#000;font-size:16px;outline:none;width:300px;max-width:90%;
+}
+.search-box input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--ring);}
+
+/* Tabla */
+table {
+  width:100%; border-collapse:collapse; background:var(--card);
+  border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;
+  color:#fff;
+}
+th,td{padding:14px 16px;text-align:left;}
+th{font-size:12px;text-transform:uppercase;color:var(--accent-2);border-bottom:1px solid rgba(255,255,255,.1);}
+tbody tr:nth-child(odd){background-color:rgba(255,255,255,0.04);}
+tbody tr:nth-child(even){background-color:rgba(255,255,255,0.08);}
+tbody tr:hover{background-color:rgba(122,162,255,0.15);}
+a.button{
+  display:inline-block;padding:6px 12px;background:var(--accent);
+  color:#0c1330;border-radius:10px;text-decoration:none;font-weight:600;
+}
+a.button:hover{filter:brightness(1.1);}
+mark{background:rgba(255,238,0,.35);padding:0 2px;border-radius:4px;}
+
+/* Modal login */
+#loginModal{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  display:flex;justify-content:center;align-items:center;
+  background:rgba(0,0,0,.55);z-index:999;
+}
+#loginModal .modal-content{
+  background:#1e293b;color:#fff;padding:40px 30px;border-radius:16px;
+  max-width:340px;width:90%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.5);
+  animation: fadeIn .5s ease-out;
+}
+#loginModal h2{margin-top:0;margin-bottom:16px;color:#7aa2ff;font-weight:600;font-size:1.4rem;}
+#loginModal input{
+  width:100%;padding:12px 14px;margin-bottom:14px;border-radius:10px;
+  border:1px solid #444;background:#0f172a;color:#fff;font-size:15px;
+  outline:none;transition:all 0.2s;
+}
+#loginModal input:focus{border-color:#7aa2ff;box-shadow:0 0 0 3px rgba(122,162,255,.4);}
+#loginModal button{
+  width:100%;padding:12px;border:none;border-radius:10px;
+  background:linear-gradient(90deg,#7aa2ff,#5a85f7);
+  color:#0c1330;font-weight:600;font-size:15px;cursor:pointer;
+  transition:transform .15s ease;
+}
+#loginModal button:hover{transform:scale(1.03);}
+#loginError{color:#ff5c5c;margin-top:10px;font-size:14px;display:none;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-15px);}to{opacity:1;transform:translateY(0);}}
+@media(max-width:600px){.search-box{flex-direction:column;align-items:center;} th,td{font-size:14px;}}
+</style>
+</head>
+<body>
+
+<div id="loginModal">
+  <div class="modal-content">
+    <h2>Iniciar Sesión</h2>
+    <input type="text" id="username" placeholder="Usuario" />
+    <input type="password" id="password" placeholder="Contraseña" />
+    <button id="loginBtn">Entrar</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<div class="container" style="display:none;" id="mainApp">
+  <div class="header">
+    <h1>📚 Libros Jurídicos Maestros</h1>
+    <button id="logoutBtn">Cerrar Sesión</button>
+  </div>
+  <div class="subtitle">Buscador conectado a Google Sheets</div>
+  <div class="search-box">
+    <input type="text" id="search" placeholder="Buscar por libro o autor..."/>
+  </div>
+  <table id="results">
+    <thead><tr><th>Libro</th><th>Autor</th><th>Acción</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbyIaAXIvCZiU2u3elmT3nUG8_YL4j-ttN8XpYJphT8F8XWEiE4nHfIJIDzwWZaFD9uT/exec";
+let allData = [];
+let currentUser = "";
+
+// Traer libros
+async function fetchLibros() {
+  const res = await fetch(`${SHEET_JSON_URL}?action=libros`);
+  if(!res.ok) throw new Error("No se pudieron obtener los libros");
+  return await res.json();
+}
+
+// Highlight
+function highlight(text, query){
+  if(!query) return text;
+  const regex = new RegExp(`(${query})`,"gi");
+  return text.replace(regex,"<mark>$1</mark>");
+}
+
+// Render tabla
+function renderTable(data, query=""){
+  const tbody = document.querySelector("#results tbody");
+  tbody.innerHTML="";
+  data.forEach(row=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML=`
+      <td>${highlight(row.libro, query)}</td>
+      <td>${highlight(row.autor, query)}</td>
+      <td><a class="button" href="${row.link}" target="_blank">Abrir</a></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Buscar
+document.getElementById("search").addEventListener("input", e=>{
+  const q = e.target.value.trim().toLowerCase();
+  const filtered = allData.filter(r=> 
+    r.libro.toLowerCase().includes(q) || 
+    r.autor.toLowerCase().includes(q)
+  );
+  renderTable(filtered,q);
+});
+
+// Manejo del login
+document.getElementById("loginBtn").addEventListener("click", async ()=>{
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  try {
+    const res = await fetch(`${SHEET_JSON_URL}?action=login&usuario=${encodeURIComponent(username)}&clave=${encodeURIComponent(password)}`);
+    const result = await res.json();
+
+    if(result.ok){
+      currentUser = username;
+      document.getElementById("loginModal").style.display="none";
+      document.getElementById("mainApp").style.display="block";
+      allData = await fetchLibros();
+      renderTable(allData);
+    } else {
+      const errDiv = document.getElementById("loginError");
+      errDiv.style.display="block";
+      errDiv.textContent="Usuario o contraseña incorrectos";
+    }
+  } catch(err){
+    console.error(err);
+    alert("Error en el login: " + err.message);
+  }
+});
+
+// Logout
+document.getElementById("logoutBtn").addEventListener("click", ()=>{
+  currentUser = "";
+  document.getElementById("mainApp").style.display="none";
+  document.getElementById("loginModal").style.display="flex";
+  document.getElementById("username").value = "";
+  document.getElementById("password").value = "";
+  document.getElementById("loginError").style.display = "none";
+});
+</script>
+</body>
+</html>
