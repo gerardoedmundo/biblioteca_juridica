@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📚 Libros Jurídicos Maestros</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#ffffff; --card:#111833; --muted:#7aa2ff; --text:#0c1330;
+  --accent:#7aa2ff; --accent-2:#b2c8ff; --radius:16px;
+  --shadow:0 10px 25px rgba(0,0,0,.1),0 6px 12px rgba(20,40,120,.05);
+  --ring: rgba(122,162,255,.35);
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text);}
+.container{max-width:1100px;margin:0 auto;padding:28px 16px 60px;}
+h1{text-align:center;margin-bottom:4px;}
+.subtitle{text-align:center;color:var(--muted);margin-bottom:20px;}
+.search-box{display:flex;justify-content:center;margin-bottom:20px;}
+.search-box input{padding:12px 20px;border-radius:999px;border:1px solid rgba(0,0,0,.12);background:#fefefe;color:var(--text);font-size:16px;outline:none;width:300px;max-width:90%;}
+.search-box input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--ring);}
+table {width:100%; border-collapse:collapse; background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; color:#fff;}
+th,td{padding:14px 16px; text-align:left;}
+th{font-size:12px; text-transform:uppercase; color:var(--accent-2); border-bottom:1px solid rgba(255,255,255,.08);}
+tr:hover{background:rgba(122,162,255,.15);}
+a.button{display:inline-block; padding:6px 12px; background:var(--accent); color:#0c1330; border-radius:10px; text-decoration:none; font-weight:600;}
+a.button:hover{filter:brightness(1.05);}
+mark{background:rgba(255,238,0,.35); padding:0 2px; border-radius:4px;}
+#loginForm{max-width:320px;margin:100px auto;padding:20px;border-radius:12px;background:#fff;box-shadow:0 10px 25px rgba(0,0,0,.25);}
+#loginForm h2{text-align:center;color:var(--accent);}
+#loginForm input{width:100%;padding:10px;margin-bottom:12px;border-radius:8px;border:1px solid #ccc;}
+#loginForm button{width:100%;padding:10px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;}
+#loginForm button:hover{filter:brightness(1.05);}
+#topBar{display:flex;justify-content:flex-end;margin-bottom:20px;}
+#topBar button{background:var(--accent);color:#fff;font-weight:600;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;}
+#topBar button:hover{filter:brightness(1.05);}
+#adminPanel{margin-bottom:30px;padding:20px;background:#eef4ff;border-radius:12px;box-shadow:var(--shadow);}
+#adminPanel h3{margin-top:0;color:#0c1330;}
+#adminPanel input, #adminPanel button {margin-top:8px;display:block;width:100%;padding:10px;border-radius:8px;}
+#adminPanel button{background:var(--accent);color:#fff;font-weight:600;border:none;cursor:pointer;}
+#adminPanel button:hover{filter:brightness(1.05);}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="loginForm">
+  <h2>Iniciar Sesión</h2>
+  <input type="text" id="loginUser" placeholder="Usuario">
+  <input type="password" id="loginPass" placeholder="Contraseña">
+  <button onclick="login()">Entrar</button>
+  <div id="loginMsg" style="margin-top:8px;color:red;"></div>
+</div>
+
+<!-- App principal -->
+<div class="container" id="mainApp" style="display:none;">
+  <!-- Barra superior -->
+  <div id="topBar">
+    <button onclick="logout()">Cerrar Sesión</button>
+  </div>
+
+  <h1>📚 Libros Jurídicos Maestros</h1>
+  <div class="subtitle">Buscador conectado a Google Sheets</div>
+
+  <!-- Panel de admin -->
+  <div id="adminPanel" style="display:none;">
+    <h3>⚙️ Panel de Administración</h3>
+
+    <!-- Agregar usuario -->
+    <h4>👤 Agregar Usuario</h4>
+    <input type="text" id="newUser" placeholder="Nuevo usuario">
+    <input type="password" id="newPass" placeholder="Contraseña">
+    <button id="addUserBtn">Agregar Usuario</button>
+    <div id="userMsg" style="margin-top:8px;"></div>
+
+    <!-- Agregar libro -->
+    <h4 style="margin-top:20px;">📚 Agregar Libro</h4>
+    <input type="text" id="newLibro" placeholder="Título del libro">
+    <input type="text" id="newAutor" placeholder="Autor">
+    <input type="text" id="newLink" placeholder="Link (Google Drive)">
+    <button id="addBookBtn">Agregar Libro</button>
+    <div id="bookMsg" style="margin-top:8px;"></div>
+  </div>
+
+  <!-- Buscador y tabla -->
+  <div class="search-box">
+    <input type="text" id="search" placeholder="Buscar por libro o autor..."/>
+  </div>
+
+  <table id="results">
+    <thead><tr><th>Libro</th><th>Autor</th><th>Acción</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbxNc_oyWJcGgXMKGLRxBRrOBG3Pd1ephJ4pABuMVyTK5uv4o32lj8BCB-O8J_5huJfg/exec";
+let allData = [];
+
+// === Login ===
+async function login(){
+  const usuario = document.getElementById("loginUser").value.trim();
+  const clave = document.getElementById("loginPass").value.trim();
+  const msg = document.getElementById("loginMsg");
+
+  try {
+    const res = await fetch(`${SHEET_JSON_URL}?action=login&usuario=${encodeURIComponent(usuario)}&clave=${encodeURIComponent(clave)}`);
+    const result = await res.json();
+
+    if (result.ok) {
+      msg.textContent = "";
+      localStorage.setItem("usuario", usuario);
+      localStorage.setItem("rol", result.rol);
+
+      if (result.rol === "admin") {
+        document.getElementById("adminPanel").style.display = "block";
+      } else {
+        document.getElementById("adminPanel").style.display = "none";
+      }
+
+      document.getElementById("loginForm").style.display = "none";
+      document.getElementById("mainApp").style.display = "block";
+
+      cargarLibros();
+    } else {
+      msg.textContent = "❌ Usuario o contraseña incorrectos";
+    }
+  } catch (err) {
+    msg.textContent = "❌ Error: " + err.message;
+  }
+}
+
+// === Logout ===
+function logout(){
+  localStorage.clear();
+  document.getElementById("loginForm").style.display = "block";
+  document.getElementById("mainApp").style.display = "none";
+  document.getElementById("adminPanel").style.display = "none";
+}
+
+// === Cargar libros ===
+async function cargarLibros(){
+  try {
+    const res = await fetch(`${SHEET_JSON_URL}?action=libros`);
+    allData = await res.json();
+    renderTable(allData);
+  } catch(err){
+    console.error("Error cargando libros:",err);
+  }
+}
+
+// === Render tabla ===
+function renderTable(data, query=""){
+  const tbody = document.querySelector("#results tbody");
+  tbody.innerHTML="";
+  data.forEach(r=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${highlight(r.libro, query)}</td>
+      <td>${highlight(r.autor, query)}</td>
+      <td><a class="button" href="${r.link}" target="_blank">Abrir</a></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// === Highlight ===
+function highlight(text, query){
+  if(!query) return text;
+  const regex = new RegExp(`(${query})`,"gi");
+  return text.replace(regex,"<mark>$1</mark>");
+}
+
+// === Buscar ===
+document.getElementById("search").addEventListener("input", e=>{
+  const q = e.target.value.trim().toLowerCase();
+  const filtered = allData.filter(r=> r.libro.toLowerCase().includes(q) || r.autor.toLowerCase().includes(q));
+  renderTable(filtered,q);
+});
+
+// === Agregar usuario (solo admin) ===
+document.getElementById("addUserBtn").addEventListener("click", async ()=>{
+  const usuario = document.getElementById("newUser").value.trim();
+  const clave = document.getElementById("newPass").value.trim();
+  const msg = document.getElementById("userMsg");
+
+  if(!usuario || !clave){
+    msg.textContent = "⚠️ Llena todos los campos.";
+    return;
+  }
+
+  try {
+    const res = await fetch(`${SHEET_JSON_URL}?action=agregarUsuario&usuario=${encodeURIComponent(usuario)}&clave=${encodeURIComponent(clave)}&rol=normal`);
+    const result = await res.json();
+
+    if(result.ok){
+      msg.textContent = "✅ Usuario agregado con éxito";
+      document.getElementById("newUser").value = "";
+      document.getElementById("newPass").value = "";
+    } else {
+      msg.textContent = "❌ Error: " + result.error;
+    }
+  } catch(err){
+    msg.textContent = "❌ Error de red: " + err.message;
+  }
+});
+
+// === Agregar libro (solo admin) ===
+document.getElementById("addBookBtn").addEventListener("click", async ()=>{
+  const libro = document.getElementById("newLibro").value.trim();
+  const autor = document.getElementById("newAutor").value.trim();
+  const link = document.getElementById("newLink").value.trim();
+  const msg = document.getElementById("bookMsg");
+
+  if(!libro || !autor || !link){
+    msg.textContent = "⚠️ Llena todos los campos.";
+    return;
+  }
+
+  try {
+    const res = await fetch(`${SHEET_JSON_URL}?action=agregarLibro&libro=${encodeURIComponent(libro)}&autor=${encodeURIComponent(autor)}&link=${encodeURIComponent(link)}`);
+    const result = await res.json();
+
+    if(result.ok){
+      msg.textContent = "✅ Libro agregado con éxito";
+      document.getElementById("newLibro").value = "";
+      document.getElementById("newAutor").value = "";
+      document.getElementById("newLink").value = "";
+      cargarLibros();
+    } else {
+      msg.textContent = "❌ Error: " + result.error;
+    }
+  } catch(err){
+    msg.textContent = "❌ Error de red: " + err.message;
+  }
+});
+</script>
+</body>
+</html>
+
