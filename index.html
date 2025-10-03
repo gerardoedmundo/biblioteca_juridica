@@ -69,10 +69,14 @@ mark{background:rgba(255,238,0,.35); padding:0 2px; border-radius:4px;}
 
     <!-- Agregar usuario -->
     <h4>👤 Agregar Usuario</h4>
-    <input type="text" id="newUser" placeholder="Nuevo usuario">
-    <input type="password" id="newPass" placeholder="Contraseña">
-    <button id="addUserBtn">Agregar Usuario</button>
-    <div id="userMsg" style="margin-top:8px;"></div>
+  <input type="text" id="newUser" placeholder="Nuevo usuario">
+  <input type="password" id="newPass" placeholder="Contraseña">
+  <select id="newRol">
+    <option value="normal">Normal</option>
+    <option value="admin">Administrador</option>
+  </select>
+  <button id="addUserBtn">Agregar Usuario</button>
+  <div id="userMsg" style="margin-top:8px;"></div>
 
     <!-- Agregar libro -->
     <h4 style="margin-top:20px;">📚 Agregar Libro</h4>
@@ -238,4 +242,5 @@ document.getElementById("addBookBtn").addEventListener("click", async ()=>{
 </script>
 </body>
 </html>
+
 
