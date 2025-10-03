@@ -32,7 +32,10 @@ mark{background:rgba(255,238,0,.35); padding:0 2px; border-radius:4px;}
 #loginForm input{width:100%;padding:10px;margin-bottom:12px;border-radius:8px;border:1px solid #ccc;}
 #loginForm button{width:100%;padding:10px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;}
 #loginForm button:hover{filter:brightness(1.05);}
-#adminPanel{margin-top:30px;padding:20px;background:#eef4ff;border-radius:12px;box-shadow:var(--shadow);}
+#topBar{display:flex;justify-content:flex-end;margin-bottom:20px;}
+#topBar button{background:var(--accent);color:#fff;font-weight:600;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;}
+#topBar button:hover{filter:brightness(1.05);}
+#adminPanel{margin-bottom:30px;padding:20px;background:#eef4ff;border-radius:12px;box-shadow:var(--shadow);}
 #adminPanel h3{margin-top:0;color:#0c1330;}
 #adminPanel input, #adminPanel button {margin-top:8px;display:block;width:100%;padding:10px;border-radius:8px;}
 #adminPanel button{background:var(--accent);color:#fff;font-weight:600;border:none;cursor:pointer;}
@@ -52,19 +55,13 @@ mark{background:rgba(255,238,0,.35); padding:0 2px; border-radius:4px;}
 
 <!-- App principal -->
 <div class="container" id="mainApp" style="display:none;">
-  <h1>📚 Libros Jurídicos Maestros</h1>
-  <div class="subtitle">Buscador conectado a Google Sheets</div>
-
-  <div class="search-box">
-    <input type="text" id="search" placeholder="Buscar por libro o autor..."/>
+  <!-- Barra superior -->
+  <div id="topBar">
+    <button onclick="logout()">Cerrar Sesión</button>
   </div>
 
-  <table id="results">
-    <thead><tr><th>Libro</th><th>Autor</th><th>Acción</th></tr></thead>
-    <tbody></tbody>
-  </table>
-
-  <button onclick="logout()" style="margin-top:20px;">Cerrar Sesión</button>
+  <h1>📚 Libros Jurídicos Maestros</h1>
+  <div class="subtitle">Buscador conectado a Google Sheets</div>
 
   <!-- Panel de admin -->
   <div id="adminPanel" style="display:none;">
@@ -85,10 +82,20 @@ mark{background:rgba(255,238,0,.35); padding:0 2px; border-radius:4px;}
     <button id="addBookBtn">Agregar Libro</button>
     <div id="bookMsg" style="margin-top:8px;"></div>
   </div>
+
+  <!-- Buscador y tabla -->
+  <div class="search-box">
+    <input type="text" id="search" placeholder="Buscar por libro o autor..."/>
+  </div>
+
+  <table id="results">
+    <thead><tr><th>Libro</th><th>Autor</th><th>Acción</th></tr></thead>
+    <tbody></tbody>
+  </table>
 </div>
 
 <script>
-const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbz7mu0chfV493EUVRbfB9BqkawTQaePrkIkW2Cq7eaqp98pUe_W81CC1Q-pHHa-YkrQ/exec";
+const SHEET_JSON_URL = "https://script.google.com/macros/s/TU_DEPLOY_ID/exec";
 let allData = [];
 
 // === Login ===
