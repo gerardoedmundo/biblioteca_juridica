@@ -320,11 +320,17 @@ document.getElementById("addBookBtn").addEventListener("click", async ()=>{
   }
 });
 </script>
-  <script>
+<script>
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js")
-  .then(() => console.log("App lista"))
-  .catch(error => console.log(error));
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js")
+    .then(registration => {
+      console.log("Service Worker activo:", registration.scope);
+    })
+    .catch(error => {
+      console.error("Error Service Worker:", error);
+    });
+  });
 }
 </script>
 </body>
