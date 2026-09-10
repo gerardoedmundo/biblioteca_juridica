@@ -320,6 +320,13 @@ document.getElementById("addBookBtn").addEventListener("click", async ()=>{
   }
 });
 </script>
+  <script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js")
+  .then(() => console.log("App lista"))
+  .catch(error => console.log(error));
+}
+</script>
 </body>
 </html>
 
